@@ -1,0 +1,10 @@
+{
+  "capture-log": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python ./capture_hook.py"
+      }
+    ]
+  }
+}
