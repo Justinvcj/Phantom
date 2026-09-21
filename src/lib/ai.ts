@@ -56,7 +56,7 @@ export async function generateSummary(transcriptText: string, template: SummaryT
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.6-flash',
       contents: transcriptText,
       config: {
         systemInstruction: instruction,
