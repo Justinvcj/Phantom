@@ -33,7 +33,7 @@ export default function ProfilePage() {
   if (!mounted) return null
 
   return (
-    <DashboardLayout activePath="/profile">
+    <DashboardLayout activePath="/profile" showBack backHref="/" backLabel="Back to Dashboard">
       <div className="p-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-slate-900 mb-2">User Profile</h1>

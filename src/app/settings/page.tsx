@@ -41,7 +41,7 @@ export default function SettingsPage() {
   if (!mounted) return null // Prevent hydration mismatch
 
   return (
-    <DashboardLayout activePath="/settings">
+    <DashboardLayout activePath="/settings" showBack backHref="/" backLabel="Back to Dashboard">
       <div className="p-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Settings</h1>

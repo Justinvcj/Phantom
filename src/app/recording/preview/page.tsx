@@ -34,7 +34,7 @@ export default function RecordingPreviewPage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showBack backHref="/" backLabel="Back to Dashboard">
       <div className="p-8 max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Recording Preview</h1>
