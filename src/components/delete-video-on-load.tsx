@@ -9,10 +9,10 @@ export function DeleteVideoOnLoad({ meetingId, hasVideo }: { meetingId: string, 
   useEffect(() => {
     if (hasVideo && !deletedRef.current) {
       deletedRef.current = true
-      // Wait a few seconds to ensure the user sees the video is loaded, then delete it from DB to save space
+      // Wait 2 minutes to ensure the user can demo the video, then delete it from DB to save space (since base64 is huge)
       setTimeout(() => {
         deleteMeetingRecording(meetingId).catch(console.error)
-      }, 5000)
+      }, 120000)
     }
   }, [meetingId, hasVideo])
 
