@@ -106,7 +106,7 @@ export async function createHighlight(rawMeetingId: string, rawStartTime: number
   revalidatePath(`/meetings/${meetingId}`)
 }
 
-export async function saveMeetingRecording(base64Data: string) {
+export async function saveMeetingRecording(base64Data: string, transcriptText: string = 'No transcript generated.') {
   const sql = postgres(process.env.SUPABASE_DB_URL!);
   try {
     const [meeting] = await sql`
@@ -118,14 +118,14 @@ export async function saveMeetingRecording(base64Data: string) {
     // Add a fake participant
     const [participant] = await sql`
       INSERT INTO participants (meeting_id, name, email)
-      VALUES (${meeting.id}, 'Steve Jobs', 'steve@apple.com')
+      VALUES (${meeting.id}, 'Speaker', 'speaker@example.com')
       RETURNING id
     `;
 
-    // Add a fake transcript segment
+    // Add a fake transcript segment with the REAL text
     await sql`
       INSERT INTO transcript_segments (meeting_id, speaker_id, start_time, end_time, text)
-      VALUES (${meeting.id}, ${participant.id}, 0, 10, 'This is a test recording generated directly from the browser using WebRTC.')
+      VALUES (${meeting.id}, ${participant.id}, 0, 10, ${transcriptText})
     `;
 
     revalidatePath('/')

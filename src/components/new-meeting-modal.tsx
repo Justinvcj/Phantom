@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Loader2, CheckCircle, Video, StopCircle, X, Mic } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { saveMeetingRecording } from '@/app/actions'
 
 // Extend window types for browser Speech Recognition API
 declare global {
@@ -180,7 +181,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     return { overview, key_points: keyPoints.length > 0 ? keyPoints : ['Recording captured successfully.'], action_items: actionItems }
   }
 
-  const processRecording = (blob: Blob) => {
+  const processRecording = async (blob: Blob) => {
     setState('processing')
     
     const transcript = finalTranscriptRef.current.trim()
@@ -188,24 +189,35 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
 
     const reader = new FileReader()
     reader.readAsDataURL(blob)
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64data = reader.result as string
 
-      // Save everything to sessionStorage — works with no network
       try {
-        sessionStorage.setItem('fathom_temp_recording', base64data)
-        sessionStorage.setItem('fathom_temp_transcript', transcript)
-        sessionStorage.setItem('fathom_temp_summary', JSON.stringify(summary))
-        sessionStorage.setItem('fathom_temp_title', `Live Recording — ${new Date().toLocaleTimeString()}`)
-      } catch (e) {
-        console.warn('Storage quota issue:', e)
-      }
+        const newMeetingId = await saveMeetingRecording(base64data, transcript)
+        setState('ready')
+        setTimeout(() => {
+          handleClose()
+          router.push(`/meetings/${newMeetingId}`)
+        }, 1500)
+      } catch (dbError) {
+        console.warn('Database save failed, falling back to local storage:', dbError)
+        
+        // Save everything to sessionStorage — works with no network
+        try {
+          sessionStorage.setItem('fathom_temp_recording', base64data)
+          sessionStorage.setItem('fathom_temp_transcript', transcript)
+          sessionStorage.setItem('fathom_temp_summary', JSON.stringify(summary))
+          sessionStorage.setItem('fathom_temp_title', `Live Recording — ${new Date().toLocaleTimeString()}`)
+        } catch (e) {
+          console.warn('Storage quota issue:', e)
+        }
 
-      setState('ready')
-      setTimeout(() => {
-        handleClose()
-        router.push('/recording/preview')
-      }, 1200)
+        setState('ready')
+        setTimeout(() => {
+          handleClose()
+          router.push('/recording/preview')
+        }, 1200)
+      }
     }
   }
 
