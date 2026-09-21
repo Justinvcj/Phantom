@@ -16,7 +16,10 @@ export default async function SearchPage({
 }: {
   searchParams: { q?: string }
 }) {
-  const query = searchParams.q || ''
+  const rawQuery = searchParams.q || ''
+  // Mitigate ReDoS / DB Timeout by truncating exceptionally long search strings
+  const query = rawQuery.substring(0, 100)
+  
   const supabase = createClient()
   
   // Search meetings

@@ -1,11 +1,19 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { generateSummary, SummaryTemplate } from "@/lib/ai"
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
-export async function generateMeetingSummary(meetingId: string, template: SummaryTemplate) {
+const GenerateSummarySchema = z.object({
+  meetingId: z.string().uuid(),
+  template: z.enum(['general', 'sales', 'product', 'interview'])
+})
+
+export async function generateMeetingSummary(rawMeetingId: string, rawTemplate: SummaryTemplate) {
+  const { meetingId, template } = GenerateSummarySchema.parse({ meetingId: rawMeetingId, template: rawTemplate })
   const supabase = createClient()
+  const supabaseAdmin = createAdminClient()
 
   // 1. Fetch transcript segments
   const { data: transcripts, error } = await supabase
@@ -27,14 +35,14 @@ export async function generateMeetingSummary(meetingId: string, template: Summar
   const summary = await generateSummary(fullTranscript, template)
 
   // 3. Upsert the summary into the database
-  const { data: existingSummary } = await supabase
+  const { data: existingSummary } = await supabaseAdmin
     .from('summaries')
     .select('id')
     .eq('meeting_id', meetingId)
     .single()
 
   if (existingSummary) {
-    await supabase
+    await supabaseAdmin
       .from('summaries')
       .update({
         template,
@@ -44,7 +52,7 @@ export async function generateMeetingSummary(meetingId: string, template: Summar
       })
       .eq('id', existingSummary.id)
   } else {
-    await supabase
+    await supabaseAdmin
       .from('summaries')
       .insert({
         meeting_id: meetingId,
@@ -56,7 +64,7 @@ export async function generateMeetingSummary(meetingId: string, template: Summar
   }
 
   // Replace action items
-  await supabase.from('action_items').delete().eq('meeting_id', meetingId)
+  await supabaseAdmin.from('action_items').delete().eq('meeting_id', meetingId)
   
   if (summary.action_items && summary.action_items.length > 0) {
     const actionItemsToInsert = summary.action_items.map(ai => ({
@@ -66,16 +74,30 @@ export async function generateMeetingSummary(meetingId: string, template: Summar
       // Default due date to +7 days for now
       due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] 
     }))
-    await supabase.from('action_items').insert(actionItemsToInsert)
+    await supabaseAdmin.from('action_items').insert(actionItemsToInsert)
   }
 
   revalidatePath(`/meetings/${meetingId}`)
 }
 
-export async function createHighlight(meetingId: string, startTime: number, endTime: number, note: string) {
-  const supabase = createClient()
+const CreateHighlightSchema = z.object({
+  meetingId: z.string().uuid(),
+  startTime: z.number().nonnegative(),
+  endTime: z.number().positive(),
+  note: z.string().max(1000)
+})
+
+export async function createHighlight(rawMeetingId: string, rawStartTime: number, rawEndTime: number, rawNote: string) {
+  const { meetingId, startTime, endTime, note } = CreateHighlightSchema.parse({
+    meetingId: rawMeetingId,
+    startTime: rawStartTime,
+    endTime: rawEndTime,
+    note: rawNote
+  })
+
+  const supabaseAdmin = createAdminClient()
   
-  await supabase
+  await supabaseAdmin
     .from('highlights')
     .insert({
       meeting_id: meetingId,

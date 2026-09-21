@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type, Schema } from '@google/genai';
 
 // Initialize the Google Gen AI SDK
 const ai = new GoogleGenAI({ apiKey: process.env.AI_API_KEY });
@@ -14,14 +14,42 @@ export interface MeetingSummary {
   }[];
 }
 
+const MeetingSummarySchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    overview: {
+      type: Type.STRING,
+      description: "A comprehensive overview paragraph of the meeting."
+    },
+    key_points: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.STRING,
+      },
+      description: "Bullet points representing the key takeaways."
+    },
+    action_items: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          assignee: { type: Type.STRING },
+          text: { type: Type.STRING }
+        },
+        required: ["assignee", "text"]
+      },
+      description: "Action items or tasks assigned during the meeting."
+    }
+  },
+  required: ["overview", "key_points", "action_items"]
+};
+
 export async function generateSummary(transcriptText: string, template: SummaryTemplate): Promise<MeetingSummary> {
-  const schemaStr = "{ 'overview': 'paragraph', 'key_points': ['point 1'], 'action_items': [{ 'assignee': 'name', 'text': 'task' }] }";
-  
   const systemInstructions = {
-    general: `You are an AI meeting assistant. Summarize the transcript. Output JSON matching exactly this schema: ${schemaStr}`,
-    sales: `You are an AI sales assistant. Summarize focusing on pain points and next steps. Output JSON matching exactly this schema: ${schemaStr}`,
-    product: `You are an AI product manager. Summarize focusing on feature requests and decisions. Output JSON matching exactly this schema: ${schemaStr}`,
-    interview: `You are an AI HR assistant. Summarize candidate strengths/weaknesses. Output JSON matching exactly this schema: ${schemaStr}`
+    general: `You are an AI meeting assistant. Summarize the transcript following the required schema. Ensure the overview is accurate.`,
+    sales: `You are an AI sales assistant. Summarize focusing on pain points, customer objections, and next steps following the required schema.`,
+    product: `You are an AI product manager. Summarize focusing on feature requests, UX feedback, and decisions following the required schema.`,
+    interview: `You are an AI HR assistant. Summarize candidate strengths, weaknesses, and follow-up topics following the required schema.`
   };
 
   const instruction = systemInstructions[template] || systemInstructions.general;
@@ -33,6 +61,7 @@ export async function generateSummary(transcriptText: string, template: SummaryT
       config: {
         systemInstruction: instruction,
         responseMimeType: "application/json",
+        responseSchema: MeetingSummarySchema
       }
     });
 

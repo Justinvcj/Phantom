@@ -1,15 +1,19 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { createAdminClient } from "@/lib/supabase/server"
+import { z } from "zod"
 
-export async function toggleActionItem(id: string, completed: boolean) {
-  const supabase = createClient()
+const ToggleActionItemSchema = z.object({
+  id: z.string().uuid(),
+  completed: z.boolean()
+})
+
+export async function toggleActionItem(rawId: string, rawCompleted: boolean) {
+  const { id, completed } = ToggleActionItemSchema.parse({ id: rawId, completed: rawCompleted })
+  const supabaseAdmin = createAdminClient()
   
-  await supabase
+  await supabaseAdmin
     .from('action_items')
     .update({ completed })
     .eq('id', id)
-
-  // Revalidate is nice, but we optimistic update on the client anyway
 }
