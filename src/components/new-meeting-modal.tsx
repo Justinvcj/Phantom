@@ -110,7 +110,16 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     reader.onloadend = async () => {
       const base64data = reader.result as string
       
+      // Always save to sessionStorage first — this is the guaranteed local fallback
+      // that works even when Supabase is unreachable
       try {
+        sessionStorage.setItem('fathom_temp_recording', base64data)
+      } catch (storageErr) {
+        console.warn('sessionStorage full, recording too large:', storageErr)
+      }
+
+      try {
+        // Try to also persist to DB (will fail gracefully if DB is down)
         const newMeetingId = await saveMeetingRecording(base64data)
         setState('ready')
         setTimeout(() => {
@@ -118,17 +127,12 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
           router.push(`/meetings/${newMeetingId}`)
         }, 1500)
       } catch (err) {
-        console.error('Failed to save to DB:', err)
+        console.warn('DB save failed, redirecting to local preview:', err)
         setState('ready')
         setTimeout(() => {
           handleClose()
-          // FIX 2: If DB is unreachable, use the seeded demo meeting if available,
-          // otherwise go back to the dashboard (never navigate to /meetings/undefined)
-          if (demoMeetingId && demoMeetingId !== 'undefined') {
-            router.push(`/meetings/${demoMeetingId}`)
-          } else {
-            router.push('/')
-          }
+          // Always redirect to the local preview page — no more /meetings/undefined 404
+          router.push('/recording/preview')
         }, 1500)
       }
     }
