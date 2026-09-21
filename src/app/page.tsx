@@ -66,13 +66,14 @@ export default async function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-0">
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
-          <div className="max-w-xl w-full flex items-center relative">
+          <form action="/search" className="max-w-xl w-full flex items-center relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3" />
             <Input 
+              name="q"
               className="w-full pl-9 bg-slate-50 border-slate-200 focus-visible:ring-indigo-500" 
               placeholder="Search meetings, transcripts, highlights..." 
             />
-          </div>
+          </form>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="text-slate-500">
               <Bell className="w-5 h-5" />
