@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { NewMeetingModal } from '@/components/new-meeting-modal'
 import { Input } from '@/components/ui/input'
 import { 
   Video, 
@@ -83,10 +84,7 @@ export default async function Dashboard() {
             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
               SJ
             </div>
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
-              <Plus className="w-4 h-4 mr-2" />
-              New Meeting
-            </Button>
+            <NewMeetingModal />
           </div>
         </header>
 
@@ -153,7 +151,7 @@ export default async function Dashboard() {
                   <Video className="w-12 h-12 text-slate-300 mb-4" />
                   <p className="text-lg font-medium text-slate-900">No meetings found</p>
                   <p className="mb-6">Click &quot;New Meeting&quot; to create one.</p>
-                  <Button>New Meeting</Button>
+                  <NewMeetingModal />
                 </div>
               )}
             </div>

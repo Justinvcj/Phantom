@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import postgres from "postgres";
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 const dbUrl = process.env.SUPABASE_DB_URL;
 
@@ -70,29 +72,49 @@ async function seed() {
   const allUserNames = users.map(u => u.name);
   
   // Generate 1000 segments
-  console.log("Generating 1000+ segments for stress test...");
+  console.log("Generating 1050 segments for stress test...");
+  const segments = [];
   for (let i = 0; i < 1050; i++) {
     const speakerName = allUserNames[i % 8];
     const speakerId = participantIds[speakerName];
     const start = Math.floor(i * 3.6);
     const end = Math.floor(start + 3.5);
     const text = `This is transcript segment number ${i + 1} spoken by ${speakerName} during the Q3 planning session. We need to make sure this scales correctly.`;
-    
-    await sql`
-      INSERT INTO transcript_segments (meeting_id, speaker_id, start_time, end_time, text)
-      VALUES (${m1}, ${speakerId}, ${start}, ${end}, ${text})
-    `;
+    segments.push({ meeting_id: m1, speaker_id: speakerId, start_time: start, end_time: end, text });
   }
+  await sql`INSERT INTO transcript_segments ${sql(segments)}`;
 
   await sql`
     INSERT INTO summaries (meeting_id, template, overview, key_points)
     VALUES (${m1}, 'general', 'Massive stress test meeting summary.', '["Stress test", "1000 segments", "8 people"]'::jsonb)
   `;
 
-  await sql`
-    INSERT INTO action_items (meeting_id, assignee, text, due_date)
-    VALUES (${m1}, 'Alice Johnson', 'Optimize the transcript panel', CURRENT_DATE + 3)
-  `;
+  console.log("Generating 10 action items...");
+  const actionItems = [];
+  for (let i = 0; i < 10; i++) {
+    const assignee = allUserNames[i % 8];
+    actionItems.push({
+      meeting_id: m1,
+      assignee,
+      text: `Action item task ${i + 1} for ${assignee}`,
+      due_date: new Date(Date.now() + i * 86400000).toISOString().split('T')[0]
+    });
+  }
+  await sql`INSERT INTO action_items ${sql(actionItems)}`;
+
+  console.log("Generating 12 highlights...");
+  const highlights = [];
+  for (let i = 0; i < 12; i++) {
+    const start = i * 300;
+    const end = start + 30;
+    highlights.push({
+      meeting_id: m1,
+      start_time: start,
+      end_time: end,
+      note: `Highlight note ${i + 1} regarding Q3 architecture`
+    });
+  }
+  await sql`INSERT INTO highlights ${sql(highlights)}`;
 
   // 2. Engineering Sync
   await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Engineering Sync', 'Weekly eng', now(), 2040, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;

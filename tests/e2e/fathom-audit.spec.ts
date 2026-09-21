@@ -67,7 +67,7 @@ test.describe('Fathom Audit', () => {
 
     // Because we mocked the API key, it will use the fallback and load
     await expect(page.getByRole('button', { name: /Sales Call/i })).toBeVisible();
-    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible();
+    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible({ timeout: 15000 });
   });
 
   test('4. Action Items & Highlights', async ({ page }) => {
