@@ -21,7 +21,7 @@ export default async function MeetingWorkspace({
   }
 
   // Fetch transcript segments with speaker details
-  const { data: transcripts, error: transcriptsError } = await supabase
+  const { data: transcripts } = await supabase
     .from('transcript_segments')
     .select(`
       *,

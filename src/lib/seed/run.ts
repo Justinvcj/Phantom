@@ -33,7 +33,7 @@ async function seed() {
   console.log("Inserting seed data...");
 
   // Mock user
-  const userRes = await sql`
+  await sql`
     INSERT INTO users (name, email) 
     VALUES ('Demo User', 'demo@example.com')
     RETURNING id

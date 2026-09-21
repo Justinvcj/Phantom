@@ -85,7 +85,7 @@ export default async function Dashboard() {
           ))}
           {(!meetings || meetings.length === 0) && (
             <div className="col-span-full py-12 text-center text-slate-500 border-2 border-dashed border-slate-200 rounded-lg">
-              No meetings found. Click "New Demo Meeting" to create one.
+              No meetings found. Click &quot;New Demo Meeting&quot; to create one.
             </div>
           )}
         </div>

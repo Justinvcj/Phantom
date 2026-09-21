@@ -55,7 +55,7 @@ export function TranscriptPanel({
   return (
     <ScrollArea className="flex-1 p-6" ref={scrollRef}>
       <div className="space-y-6">
-        {groupedTranscripts.map((group, i) => (
+        {groupedTranscripts.map((group: any, i: number) => (
           <div key={i} className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
               {group.speaker_name.charAt(0)}
