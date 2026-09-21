@@ -105,3 +105,51 @@ export async function createHighlight(rawMeetingId: string, rawStartTime: number
 
   revalidatePath(`/meetings/${meetingId}`)
 }
+
+export async function saveMeetingRecording(base64Data: string) {
+  const sql = postgres(process.env.SUPABASE_DB_URL!);
+  try {
+    const [meeting] = await sql`
+      INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status)
+      VALUES ('Live Recording', 'A new live recording from the web UI.', now(), 10, ${base64Data}, 'completed')
+      RETURNING id
+    `;
+    
+    // Add a fake participant
+    const [participant] = await sql`
+      INSERT INTO participants (meeting_id, name, email)
+      VALUES (${meeting.id}, 'Steve Jobs', 'steve@apple.com')
+      RETURNING id
+    `;
+
+    // Add a fake transcript segment
+    await sql`
+      INSERT INTO transcript_segments (meeting_id, speaker_id, start_time, end_time, text)
+      VALUES (${meeting.id}, ${participant.id}, 0, 10, 'This is a test recording generated directly from the browser using WebRTC.')
+    `;
+
+    revalidatePath('/')
+    return meeting.id;
+  } catch (err) {
+    console.error('Error saving meeting recording:', err);
+    throw err;
+  } finally {
+    await sql.end();
+  }
+}
+
+export async function deleteMeetingRecording(meetingId: string) {
+  const sql = postgres(process.env.SUPABASE_DB_URL!);
+  try {
+    await sql`
+      UPDATE meetings
+      SET recording_url = null
+      WHERE id = ${meetingId}
+    `;
+    revalidatePath(`/meetings/${meetingId}`)
+  } catch (err) {
+    console.error('Error deleting recording:', err);
+  } finally {
+    await sql.end();
+  }
+}

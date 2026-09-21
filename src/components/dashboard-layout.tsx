@@ -33,16 +33,16 @@ export function DashboardLayout({ children, activePath = '/' }: { children: Reac
           <Link href="/" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm ${activePath === '/' ? 'bg-slate-200/60 text-indigo-700' : 'text-slate-600 hover:bg-slate-200/40'}`}>
             <LayoutDashboard className="w-4 h-4" /> Dashboard
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-200/40 rounded-md font-medium text-sm">
+          <Link href="/meetings" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm ${activePath === '/meetings' ? 'bg-slate-200/60 text-indigo-700' : 'text-slate-600 hover:bg-slate-200/40'}`}>
             <Users className="w-4 h-4" /> Meetings
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-200/40 rounded-md font-medium text-sm">
+          <Link href="/highlights" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm ${activePath === '/highlights' ? 'bg-slate-200/60 text-indigo-700' : 'text-slate-600 hover:bg-slate-200/40'}`}>
             <Highlighter className="w-4 h-4" /> Highlights
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-200/40 rounded-md font-medium text-sm">
+          <Link href="/tasks" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm ${activePath === '/tasks' ? 'bg-slate-200/60 text-indigo-700' : 'text-slate-600 hover:bg-slate-200/40'}`}>
             <CheckSquare className="w-4 h-4" /> Tasks
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-200/40 rounded-md font-medium text-sm">
+          <Link href="/calendar" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm ${activePath === '/calendar' ? 'bg-slate-200/60 text-indigo-700' : 'text-slate-600 hover:bg-slate-200/40'}`}>
             <Calendar className="w-4 h-4" /> Calendar
           </Link>
         </nav>

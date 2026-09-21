@@ -38,7 +38,7 @@ export default function SettingsPage() {
     localStorage.setItem('fathom_default_template', val)
   }
 
-  if (!mounted) return null
+  if (!mounted) return null // Prevent hydration mismatch
 
   return (
     <DashboardLayout activePath="/settings">

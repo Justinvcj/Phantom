@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { WorkspaceClient } from "@/components/workspace-client"
 import { notFound } from "next/navigation"
+import { DeleteVideoOnLoad } from "@/components/delete-video-on-load"
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +93,9 @@ export default async function MeetingWorkspace({
           highlights={highlights || []}
           initialSeekTime={initialSeekTime}
         />
+        {meeting.recording_url && meeting.recording_url.startsWith('data:video') && (
+          <DeleteVideoOnLoad meetingId={meeting.id} hasVideo={true} />
+        )}
       </main>
     </div>
   )

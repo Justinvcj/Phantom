@@ -4,16 +4,19 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Loader2, CheckCircle, Video, StopCircle, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { saveMeetingRecording } from '@/app/actions'
 
 export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'preview' | 'recording' | 'processing' | 'ready'>('idle')
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [timeLeft, setTimeLeft] = useState(10)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
   const router = useRouter()
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize camera
   const startCamera = async () => {
@@ -39,6 +42,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     if (stream) {
       stream.getTracks().forEach(track => track.stop())
     }
+    if (timerRef.current) clearInterval(timerRef.current)
     setStream(null)
     setIsOpen(false)
     setState('idle')
@@ -57,43 +61,62 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     }
 
     mediaRecorder.onstop = () => {
+      if (timerRef.current) clearInterval(timerRef.current)
       const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-      const videoUrl = URL.createObjectURL(blob)
-      console.log('Recorded video URL:', videoUrl)
-      
-      // In a real app, we would upload the Blob to Supabase Storage here
-      // and call a server action to create a new meeting row.
-      processRecording()
+      processRecording(blob)
     }
 
     mediaRecorderRef.current = mediaRecorder
     mediaRecorder.start()
     setState('recording')
+    setTimeLeft(10)
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          stopRecording()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
   }
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && state === 'recording') {
       mediaRecorderRef.current.stop()
+      if (timerRef.current) clearInterval(timerRef.current)
     }
   }
 
-  const processRecording = () => {
+  const processRecording = (blob: Blob) => {
     setState('processing')
     
-    // Simulate server-side transcription and AI summary generation
-    setTimeout(() => {
-      setState('ready')
+    const reader = new FileReader()
+    reader.readAsDataURL(blob)
+    reader.onloadend = async () => {
+      const base64data = reader.result as string
       
-      // Auto-close and redirect
-      setTimeout(() => {
-        handleClose()
-        if (demoMeetingId) {
-          router.push(`/meetings/${demoMeetingId}`)
-        } else {
-          router.refresh()
-        }
-      }, 1500)
-    }, 3000)
+      try {
+        const newMeetingId = await saveMeetingRecording(base64data)
+        setState('ready')
+        setTimeout(() => {
+          handleClose()
+          router.push(`/meetings/${newMeetingId}`)
+        }, 1500)
+      } catch (err) {
+        console.error('Failed to save to DB, falling back to demo', err)
+        setState('ready')
+        setTimeout(() => {
+          handleClose()
+          if (demoMeetingId) {
+            router.push(`/meetings/${demoMeetingId}`)
+          } else {
+            router.refresh()
+          }
+        }, 1500)
+      }
+    }
   }
 
   // Cleanup on unmount
@@ -102,6 +125,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
       if (stream) {
         stream.getTracks().forEach(track => track.stop())
       }
+      if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [stream])
 
@@ -137,7 +161,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
                   {state === 'recording' && (
                     <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 backdrop-blur px-3 py-1.5 rounded-full">
                       <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-white text-xs font-medium uppercase tracking-wider">Recording</span>
+                      <span className="text-white text-xs font-medium uppercase tracking-wider">Recording (0:{timeLeft.toString().padStart(2, '0')})</span>
                     </div>
                   )}
                 </div>
