@@ -30,6 +30,20 @@ export default async function MeetingWorkspace({
     .eq('meeting_id', params.id)
     .order('start_time', { ascending: true })
 
+  // Fetch summary
+  const { data: summary } = await supabase
+    .from('summaries')
+    .select('*')
+    .eq('meeting_id', params.id)
+    .single()
+
+  // Fetch action items
+  const { data: actionItems } = await supabase
+    .from('action_items')
+    .select('*')
+    .eq('meeting_id', params.id)
+    .order('due_date', { ascending: true })
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
@@ -45,6 +59,8 @@ export default async function MeetingWorkspace({
         <WorkspaceClient 
           meeting={meeting} 
           transcripts={transcripts || []} 
+          summary={summary}
+          actionItems={actionItems || []}
         />
       </main>
     </div>

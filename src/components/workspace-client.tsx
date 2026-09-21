@@ -3,14 +3,20 @@
 import { useState } from 'react'
 import { Player } from './player'
 import { TranscriptPanel } from './transcript-panel'
+import { SummaryPanel } from './summary-panel'
+import { ActionItemsPanel } from './action-items-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export function WorkspaceClient({ 
   meeting, 
-  transcripts 
+  transcripts,
+  summary,
+  actionItems
 }: { 
   meeting: any, 
-  transcripts: any[] 
+  transcripts: any[],
+  summary: any,
+  actionItems: any[]
 }) {
   const [currentTime, setCurrentTime] = useState(0)
 
@@ -32,11 +38,11 @@ export function WorkspaceClient({
               <TabsTrigger value="action-items">Action Items</TabsTrigger>
               <TabsTrigger value="highlights">Highlights</TabsTrigger>
             </TabsList>
-            <TabsContent value="overview" className="mt-4">
-              <div className="text-sm text-slate-500 italic">Summary will go here in Phase 4.</div>
+            <TabsContent value="overview" className="mt-6">
+              <SummaryPanel meetingId={meeting.id} summary={summary} />
             </TabsContent>
-            <TabsContent value="action-items" className="mt-4">
-              <div className="text-sm text-slate-500 italic">Action items will go here.</div>
+            <TabsContent value="action-items" className="mt-6">
+              <ActionItemsPanel actionItems={actionItems} />
             </TabsContent>
             <TabsContent value="highlights" className="mt-4">
               <div className="text-sm text-slate-500 italic">Highlights will go here.</div>
