@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Video, Loader2, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export function NewMeetingModal() {
+export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'ready'>('idle')
   const router = useRouter()
@@ -22,12 +22,16 @@ export function NewMeetingModal() {
       setTimeout(() => {
         setState('ready')
         
-        // Auto-close and refresh after 2 seconds
+        // Auto-close and redirect after briefly showing Ready state
         setTimeout(() => {
           setIsOpen(false)
           setState('idle')
-          router.refresh()
-        }, 2000)
+          if (demoMeetingId) {
+            router.push(`/meetings/${demoMeetingId}`)
+          } else {
+            router.refresh()
+          }
+        }, 800)
       }, 3000)
     }, 3000)
   }
@@ -36,7 +40,7 @@ export function NewMeetingModal() {
     <>
       <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleStart}>
         <Plus className="w-4 h-4 mr-2" />
-        New Meeting
+        New Demo Meeting
       </Button>
 
       {isOpen && (

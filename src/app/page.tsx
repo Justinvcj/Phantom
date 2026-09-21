@@ -21,6 +21,8 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+import { CalendarSyncButton } from '@/components/calendar-sync-button'
+
 export default async function Dashboard() {
   const supabase = createClient()
   
@@ -28,7 +30,11 @@ export default async function Dashboard() {
   const { data: meetings } = await supabase
     .from('meetings')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('date', { ascending: false })
+
+  // Find the stress-test meeting (Q3 Product Strategy) to use for the stub
+  const stressTestMeeting = meetings?.find(m => m.title === 'Q3 Product Strategy')
+  const stressTestMeetingId = stressTestMeeting?.id || (meetings?.[0]?.id)
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -81,10 +87,11 @@ export default async function Dashboard() {
             <Button variant="ghost" size="icon" className="text-slate-500">
               <Bell className="w-5 h-5" />
             </Button>
+            <CalendarSyncButton />
             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
               SJ
             </div>
-            <NewMeetingModal />
+            <NewMeetingModal demoMeetingId={stressTestMeetingId} />
           </div>
         </header>
 
@@ -150,8 +157,8 @@ export default async function Dashboard() {
                 <div className="col-span-full py-16 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-200 rounded-xl bg-white">
                   <Video className="w-12 h-12 text-slate-300 mb-4" />
                   <p className="text-lg font-medium text-slate-900">No meetings found</p>
-                  <p className="mb-6">Click &quot;New Meeting&quot; to create one.</p>
-                  <NewMeetingModal />
+                  <p className="mb-6">Click &quot;New Demo Meeting&quot; to create one.</p>
+                  <NewMeetingModal demoMeetingId={stressTestMeetingId} />
                 </div>
               )}
             </div>
