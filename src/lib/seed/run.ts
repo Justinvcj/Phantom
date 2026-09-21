@@ -32,76 +32,78 @@ async function seed() {
 
   console.log("Inserting seed data...");
 
-  // Mock user
-  await sql`
-    INSERT INTO users (name, email) 
-    VALUES ('Demo User', 'demo@example.com')
-    RETURNING id
-  `;
-
-  // 1. Fake sync meeting (Phase 3 tests Transcript+Player sync)
-  const meetingRes = await sql`
-    INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status)
-    VALUES (
-      'Product Sync', 
-      'Weekly sync to discuss product roadmap and upcoming launch', 
-      now(), 
-      3600, 
-      'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', -- Working sample video
-      'ready'
-    )
-    RETURNING id
-  `;
-  const meetingId = meetingRes[0].id;
-
-  // Participants
-  const participantsRes = await sql`
-    INSERT INTO participants (meeting_id, name, email)
-    VALUES 
-      (${meetingId}, 'Alice Johnson', 'alice@example.com'),
-      (${meetingId}, 'Bob Smith', 'bob@example.com')
-    RETURNING id, name
-  `;
-  const aliceId = participantsRes.find(p => p.name === 'Alice Johnson')?.id;
-  const bobId = participantsRes.find(p => p.name === 'Bob Smith')?.id;
-
-  // Transcript Segments
-  const transcripts = [
-    { start: 0, end: 5, speaker_id: aliceId, text: "Hey Bob, how are you doing today?" },
-    { start: 6, end: 10, speaker_id: bobId, text: "Doing well, Alice. Just wrapping up the design docs." },
-    { start: 11, end: 20, speaker_id: aliceId, text: "Great. Let's talk about the new feature rollout for Q3. I think we should prioritize the dashboard redesign." },
-    { start: 21, end: 35, speaker_id: bobId, text: "Agreed. The feedback from the beta users was that it's a bit cluttered. We need to streamline the meeting view." },
-    { start: 36, end: 45, speaker_id: aliceId, text: "Exactly. I'll take an action item to review the new Figma mocks by Thursday." },
+  // Mock users
+  const users = [
+    { name: 'Demo User', email: 'demo@example.com' },
+    { name: 'Alice Johnson', email: 'alice@example.com' },
+    { name: 'Bob Smith', email: 'bob@example.com' },
+    { name: 'Charlie Davis', email: 'charlie@example.com' },
+    { name: 'Diana Prince', email: 'diana@example.com' },
+    { name: 'Ethan Hunt', email: 'ethan@example.com' },
+    { name: 'Fiona Gallagher', email: 'fiona@example.com' },
+    { name: 'George Costanza', email: 'george@example.com' },
   ];
 
-  for (const t of transcripts) {
+  const userIds: Record<string, string> = {};
+  for (const u of users) {
+    const res = await sql`
+      INSERT INTO users (name, email) VALUES (${u.name}, ${u.email}) RETURNING id
+    `;
+    userIds[u.name] = res[0].id;
+  }
+
+  // 1. Stress Test Meeting: Q3 Product Strategy (1h03m, 8 participants, 1000 segments)
+  const stressRes = await sql`
+    INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status)
+    VALUES ('Q3 Product Strategy', 'Stress test meeting', now(), 3780, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')
+    RETURNING id
+  `;
+  const m1 = stressRes[0].id;
+
+  // Insert all 8 participants for m1
+  const participantIds: Record<string, string> = {};
+  for (const u of users) {
+    const res = await sql`INSERT INTO participants (meeting_id, name, email) VALUES (${m1}, ${u.name}, ${u.email}) RETURNING id`;
+    participantIds[u.name] = res[0].id;
+  }
+  
+  const allUserNames = users.map(u => u.name);
+  
+  // Generate 1000 segments
+  console.log("Generating 1000+ segments for stress test...");
+  for (let i = 0; i < 1050; i++) {
+    const speakerName = allUserNames[i % 8];
+    const speakerId = participantIds[speakerName];
+    const start = Math.floor(i * 3.6);
+    const end = Math.floor(start + 3.5);
+    const text = `This is transcript segment number ${i + 1} spoken by ${speakerName} during the Q3 planning session. We need to make sure this scales correctly.`;
+    
     await sql`
       INSERT INTO transcript_segments (meeting_id, speaker_id, start_time, end_time, text)
-      VALUES (${meetingId}, ${t.speaker_id}, ${t.start}, ${t.end}, ${t.text})
+      VALUES (${m1}, ${speakerId}, ${start}, ${end}, ${text})
     `;
   }
 
-  // Summary
   await sql`
     INSERT INTO summaries (meeting_id, template, overview, key_points)
-    VALUES (
-      ${meetingId}, 
-      'general', 
-      'The team discussed the Q3 product roadmap with a focus on the dashboard redesign based on beta user feedback.',
-      '["Dashboard redesign is priority for Q3", "Beta users found current view cluttered", "New Figma mocks to be reviewed by Thursday"]'::jsonb
-    )
+    VALUES (${m1}, 'general', 'Massive stress test meeting summary.', '["Stress test", "1000 segments", "8 people"]'::jsonb)
   `;
 
-  // Action Items
   await sql`
     INSERT INTO action_items (meeting_id, assignee, text, due_date)
-    VALUES (
-      ${meetingId}, 
-      'Alice Johnson', 
-      'Review the new Figma mocks for the dashboard redesign', 
-      CURRENT_DATE + 3
-    )
+    VALUES (${m1}, 'Alice Johnson', 'Optimize the transcript panel', CURRENT_DATE + 3)
   `;
+
+  // 2. Engineering Sync
+  await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Engineering Sync', 'Weekly eng', now(), 2040, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;
+  // 3. Client Discovery
+  await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Client Discovery', 'Acme Corp', now(), 2520, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;
+  // 4. Weekly 1:1
+  await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Weekly 1:1', 'Manager sync', now(), 1680, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;
+  // 5. Sprint Planning
+  await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Sprint Planning', 'Sprint 42', now(), 3060, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;
+  // 6. Design Review
+  await sql`INSERT INTO meetings (title, description, date, duration_seconds, recording_url, status) VALUES ('Design Review', 'UI mocks', now(), 2220, 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'ready')`;
 
   console.log("Seed complete.");
   await sql.end();
