@@ -46,14 +46,15 @@ export function SummaryPanel({
           AI Summary
         </h2>
         <DropdownMenu>
-          {/* @ts-expect-error shadcn asChild type issue */}
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={isPending}>
-              {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {templateLabels[currentTemplate]}
-              <ChevronDown className="w-4 h-4 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger 
+            render={
+              <Button variant="outline" size="sm" disabled={isPending}>
+                {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {templateLabels[currentTemplate]}
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+            }
+          />
           <DropdownMenuContent align="end">
             {(Object.keys(templateLabels) as SummaryTemplate[]).map(t => (
               <DropdownMenuItem key={t} onClick={() => handleGenerate(t)}>
