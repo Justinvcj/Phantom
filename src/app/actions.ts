@@ -71,3 +71,18 @@ export async function generateMeetingSummary(meetingId: string, template: Summar
 
   revalidatePath(`/meetings/${meetingId}`)
 }
+
+export async function createHighlight(meetingId: string, startTime: number, endTime: number, note: string) {
+  const supabase = createClient()
+  
+  await supabase
+    .from('highlights')
+    .insert({
+      meeting_id: meetingId,
+      start_time: Math.floor(startTime),
+      end_time: Math.floor(endTime),
+      note
+    })
+
+  revalidatePath(`/meetings/${meetingId}`)
+}

@@ -3,9 +3,11 @@ import { WorkspaceClient } from "@/components/workspace-client"
 import { notFound } from "next/navigation"
 
 export default async function MeetingWorkspace({ 
-  params 
+  params,
+  searchParams
 }: { 
-  params: { id: string } 
+  params: { id: string },
+  searchParams: { [key: string]: string | string[] | undefined }
 }) {
   const supabase = createClient()
 
@@ -44,6 +46,15 @@ export default async function MeetingWorkspace({
     .eq('meeting_id', params.id)
     .order('due_date', { ascending: true })
 
+  // Fetch highlights
+  const { data: highlights } = await supabase
+    .from('highlights')
+    .select('*')
+    .eq('meeting_id', params.id)
+    .order('start_time', { ascending: true })
+
+  const initialSeekTime = searchParams.start ? parseInt(searchParams.start as string) : undefined
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
@@ -61,6 +72,8 @@ export default async function MeetingWorkspace({
           transcripts={transcripts || []} 
           summary={summary}
           actionItems={actionItems || []}
+          highlights={highlights || []}
+          initialSeekTime={initialSeekTime}
         />
       </main>
     </div>

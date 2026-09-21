@@ -1,92 +1,83 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
 
 export function TranscriptPanel({ 
   transcripts, 
-  currentTime 
+  currentTime,
+  onSeek
 }: { 
   transcripts: any[], 
-  currentTime: number 
+  currentTime: number,
+  onSeek?: (time: number) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
-  // Create a ref map to scroll to active segments
-  const segmentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  // Find active segment
+  const activeSegmentIndex = transcripts.findIndex(
+    (t) => currentTime >= t.start_time && currentTime <= t.end_time
+  )
 
-  // Find the currently active segment
-  const activeSegmentId = transcripts.find(
-    (t) => currentTime >= t.start_time && currentTime < t.end_time
-  )?.id
-
-  // Scroll to active segment when it changes
+  // Auto-scroll to active segment
   useEffect(() => {
-    if (activeSegmentId && segmentRefs.current[activeSegmentId]) {
-      segmentRefs.current[activeSegmentId]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      })
+    if (activeSegmentIndex === -1) return
+    const el = scrollRef.current?.querySelector(`[data-active="true"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [activeSegmentId])
+  }, [activeSegmentIndex])
 
-  // Group transcripts by speaker if they are sequential
-  const groupedTranscripts = transcripts.reduce((acc, current) => {
-    const last = acc[acc.length - 1]
-    if (last && last.speaker_id === current.speaker_id) {
-      last.segments.push(current)
+  // Group transcripts by speaker consecutively
+  const groupedTranscripts = []
+  let currentGroup: any = null
+
+  for (let i = 0; i < transcripts.length; i++) {
+    const t = transcripts[i]
+    const isActive = i === activeSegmentIndex
+    
+    if (currentGroup && currentGroup.speaker_id === t.speaker_id) {
+      currentGroup.segments.push({ ...t, isActive })
     } else {
-      acc.push({
-        speaker_id: current.speaker_id,
-        speaker_name: current.participants?.name || 'Unknown',
-        segments: [current]
-      })
+      if (currentGroup) groupedTranscripts.push(currentGroup)
+      currentGroup = {
+        speaker_id: t.speaker_id,
+        speaker_name: Array.isArray(t.participants) ? t.participants[0]?.name : (t.participants as any)?.name || 'Unknown',
+        segments: [{ ...t, isActive }]
+      }
     }
-    return acc
-  }, [] as any[])
-
-  function formatTime(seconds: number) {
-    const m = Math.floor(seconds / 60)
-    const s = Math.floor(seconds % 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
+  if (currentGroup) groupedTranscripts.push(currentGroup)
 
   return (
     <ScrollArea className="flex-1 p-6" ref={scrollRef}>
       <div className="space-y-6">
         {groupedTranscripts.map((group: any, i: number) => (
           <div key={i} className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0 mt-1">
               {group.speaker_name.charAt(0)}
             </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{group.speaker_name}</span>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-sm text-slate-900">{group.speaker_name}</span>
                 <span className="text-xs text-slate-400">
-                  {formatTime(group.segments[0].start_time)}
+                  {Math.floor(group.segments[0].start_time / 60)}:{(group.segments[0].start_time % 60).toString().padStart(2, '0')}
                 </span>
               </div>
-              
-              <div className="space-y-1">
-                {group.segments.map((segment: any) => {
-                  const isActive = activeSegmentId === segment.id
-                  return (
-                    <div 
-                      key={segment.id}
-                      ref={(el) => {
-                        segmentRefs.current[segment.id] = el
-                      }}
-                      className={cn(
-                        "p-1.5 rounded transition-colors duration-200",
-                        isActive ? "bg-indigo-50 text-indigo-900" : "text-slate-700 hover:bg-slate-50"
-                      )}
-                    >
-                      {segment.text}
-                    </div>
-                  )
-                })}
-              </div>
+              {group.segments.map((seg: any, j: number) => (
+                <p 
+                  key={j} 
+                  onClick={() => onSeek && onSeek(seg.start_time)}
+                  className={`text-sm leading-relaxed rounded-md px-2 py-1 -mx-2 transition-colors cursor-pointer ${
+                    seg.isActive 
+                      ? 'bg-indigo-50 text-indigo-900' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                  data-active={seg.isActive}
+                >
+                  {seg.text}
+                </p>
+              ))}
             </div>
           </div>
         ))}

@@ -5,20 +5,32 @@ import { Player } from './player'
 import { TranscriptPanel } from './transcript-panel'
 import { SummaryPanel } from './summary-panel'
 import { ActionItemsPanel } from './action-items-panel'
+import { HighlightsPanel } from './highlights-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export function WorkspaceClient({ 
   meeting, 
   transcripts,
   summary,
-  actionItems
+  actionItems,
+  highlights,
+  initialSeekTime
 }: { 
   meeting: any, 
   transcripts: any[],
   summary: any,
-  actionItems: any[]
+  actionItems: any[],
+  highlights: any[],
+  initialSeekTime?: number
 }) {
   const [currentTime, setCurrentTime] = useState(0)
+  const [seekTime, setSeekTime] = useState<number | undefined>(initialSeekTime)
+
+  const handleSeek = (time: number) => {
+    setSeekTime(time)
+    // small hack to allow seeking to the same time twice if needed
+    setTimeout(() => setSeekTime(undefined), 100)
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-65px)]">
@@ -27,6 +39,7 @@ export function WorkspaceClient({
         <Player 
           url={meeting.recording_url} 
           onTimeUpdate={setCurrentTime}
+          seekTime={seekTime}
         />
         <div className="bg-white p-6 flex-1 overflow-auto border-r border-slate-200">
           <h1 className="text-2xl font-bold mb-2">{meeting.title}</h1>
@@ -44,8 +57,13 @@ export function WorkspaceClient({
             <TabsContent value="action-items" className="mt-6">
               <ActionItemsPanel actionItems={actionItems} />
             </TabsContent>
-            <TabsContent value="highlights" className="mt-4">
-              <div className="text-sm text-slate-500 italic">Highlights will go here.</div>
+            <TabsContent value="highlights" className="mt-6">
+              <HighlightsPanel 
+                meetingId={meeting.id} 
+                highlights={highlights} 
+                currentTime={currentTime} 
+                onSeek={handleSeek} 
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -59,7 +77,8 @@ export function WorkspaceClient({
         </div>
         <TranscriptPanel 
           transcripts={transcripts} 
-          currentTime={currentTime} 
+          currentTime={currentTime}
+          onSeek={handleSeek}
         />
       </div>
     </div>

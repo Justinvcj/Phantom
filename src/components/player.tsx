@@ -4,10 +4,12 @@ import { useRef, useEffect } from 'react'
 
 export function Player({ 
   url, 
-  onTimeUpdate 
+  onTimeUpdate,
+  seekTime
 }: { 
   url: string, 
-  onTimeUpdate: (time: number) => void 
+  onTimeUpdate: (time: number) => void,
+  seekTime?: number
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -22,6 +24,14 @@ export function Player({
     video.addEventListener('timeupdate', handleTimeUpdate)
     return () => video.removeEventListener('timeupdate', handleTimeUpdate)
   }, [onTimeUpdate])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (video && seekTime !== undefined && seekTime >= 0) {
+      video.currentTime = seekTime
+      video.play().catch(e => console.log('Autoplay prevented', e))
+    }
+  }, [seekTime])
 
   return (
     <div className="relative w-full aspect-video bg-black flex items-center justify-center">
