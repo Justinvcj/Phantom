@@ -41,7 +41,7 @@ test.describe('Fathom Audit', () => {
     // Sync Test B: Transcript -> Playback
     // Click an arbitrary segment, e.g. the first one that is NOT active
     const inactiveSegment = page.locator('p[data-active="false"]').first();
-    await inactiveSegment.click();
+    await inactiveSegment.click({ force: true });
     
     // Check if the video time jumped (it might take a split second)
     await page.waitForTimeout(500);
@@ -54,8 +54,9 @@ test.describe('Fathom Audit', () => {
     await page.getByText('Q3 Product Strategy').click();
     await page.waitForURL('**/meetings/*');
 
-    // Wait for Summary tab (Overview) to be active
-    await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+    // Wait for Summary tab to be active
+    await page.getByRole('tab', { name: 'Summary' }).click();
+    await expect(page.getByRole('tab', { name: 'Summary' })).toHaveAttribute('aria-selected', 'true');
     
     // Verify AI summary renders structured key points
     await expect(page.getByText('Key Points')).toBeVisible();

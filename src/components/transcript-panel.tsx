@@ -12,30 +12,34 @@ const TranscriptGroup = memo(function TranscriptGroup({
 }) {
   return (
     <div className="flex gap-4">
-      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0 mt-1">
-        {group.speaker_name.charAt(0)}
+      <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0 mt-1">
+        <img src={`https://i.pravatar.cc/150?u=${group.speaker_id || group.speaker_name}`} alt="Profile" className="w-full h-full object-cover" />
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-sm text-slate-900">{group.speaker_name}</span>
-          <span className="text-xs text-slate-400">
-            {Math.floor(group.segments[0].start_time / 60)}:{(group.segments[0].start_time % 60).toString().padStart(2, '0')}
-          </span>
+      <div className="flex-1">
+        <div className="bg-slate-100/70 rounded-[1.25rem] px-5 pt-3.5 pb-4 relative group hover:bg-slate-100 transition-colors">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-semibold text-[0.9rem] text-slate-800">{group.speaker_name}</span>
+            <span className="text-[0.75rem] text-slate-400">
+              • {Math.floor(group.segments[0].start_time / 60)}:{(group.segments[0].start_time % 60).toString().padStart(2, '0')} AM
+            </span>
+          </div>
+          <div className="space-y-1">
+            {group.segments.map((seg: any, j: number) => (
+              <p 
+                key={j} 
+                onClick={() => onSeek && onSeek(seg.start_time)}
+                className={`text-[0.9rem] leading-relaxed rounded-md px-1 -mx-1 transition-colors cursor-pointer inline ${
+                  seg.isActive 
+                    ? 'bg-indigo-100 text-indigo-900 font-medium' 
+                    : 'text-slate-700 hover:bg-slate-200/50'
+                }`}
+                data-active={seg.isActive}
+              >
+                {seg.text}{' '}
+              </p>
+            ))}
+          </div>
         </div>
-        {group.segments.map((seg: any, j: number) => (
-          <p 
-            key={j} 
-            onClick={() => onSeek && onSeek(seg.start_time)}
-            className={`text-sm leading-relaxed rounded-md px-2 py-1 -mx-2 transition-colors cursor-pointer ${
-              seg.isActive 
-                ? 'bg-indigo-50 text-indigo-900' 
-                : 'text-slate-700 hover:bg-slate-50'
-            }`}
-            data-active={seg.isActive}
-          >
-            {seg.text}
-          </p>
-        ))}
       </div>
     </div>
   )
