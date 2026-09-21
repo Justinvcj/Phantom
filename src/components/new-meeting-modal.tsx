@@ -18,24 +18,32 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
   const router = useRouter()
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // FIX 1: Wire stream to video element whenever stream changes.
+  // This runs AFTER the video element is rendered in the DOM,
+  // fixing the black screen caused by assigning srcObject before mount.
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream
+    }
+  }, [stream])
+
   // Initialize camera
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       setStream(mediaStream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
+      // NOTE: We no longer set srcObject here — the useEffect above handles it
       setState('preview')
     } catch (err) {
       console.error('Error accessing media devices:', err)
-      alert('Could not access camera/microphone. Please check permissions.')
+      alert('Could not access camera/microphone. Please check browser permissions.')
     }
   }
 
   const handleOpen = () => {
     setIsOpen(true)
-    startCamera()
+    // Delay camera start slightly to let the modal render first
+    setTimeout(() => startCamera(), 100)
   }
 
   const handleClose = () => {
@@ -46,6 +54,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     setStream(null)
     setIsOpen(false)
     setState('idle')
+    setTimeLeft(10)
   }
 
   const startRecording = () => {
@@ -74,7 +83,11 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          stopRecording()
+          // Auto-stop when countdown hits zero
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop()
+          }
+          if (timerRef.current) clearInterval(timerRef.current)
           return 0
         }
         return prev - 1
@@ -83,10 +96,10 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && state === 'recording') {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
-      if (timerRef.current) clearInterval(timerRef.current)
     }
+    if (timerRef.current) clearInterval(timerRef.current)
   }
 
   const processRecording = (blob: Blob) => {
@@ -105,14 +118,16 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
           router.push(`/meetings/${newMeetingId}`)
         }, 1500)
       } catch (err) {
-        console.error('Failed to save to DB, falling back to demo', err)
+        console.error('Failed to save to DB:', err)
         setState('ready')
         setTimeout(() => {
           handleClose()
-          if (demoMeetingId) {
+          // FIX 2: If DB is unreachable, use the seeded demo meeting if available,
+          // otherwise go back to the dashboard (never navigate to /meetings/undefined)
+          if (demoMeetingId && demoMeetingId !== 'undefined') {
             router.push(`/meetings/${demoMeetingId}`)
           } else {
-            router.refresh()
+            router.push('/')
           }
         }, 1500)
       }
@@ -151,6 +166,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
               
               {(state === 'preview' || state === 'recording') && (
                 <div className="w-full relative rounded-lg overflow-hidden bg-slate-900 aspect-video mb-6">
+                  {/* FIX 1: video element always rendered so ref is available for srcObject assignment */}
                   <video 
                     ref={videoRef}
                     autoPlay 
@@ -159,26 +175,45 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
                     className="w-full h-full object-cover"
                   />
                   {state === 'recording' && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 backdrop-blur px-3 py-1.5 rounded-full">
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-1.5 rounded-full">
                       <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-white text-xs font-medium uppercase tracking-wider">Recording (0:{timeLeft.toString().padStart(2, '0')})</span>
+                      <span className="text-white text-xs font-bold uppercase tracking-widest">
+                        REC 0:{timeLeft.toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
+                  {state === 'preview' && (
+                    <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center">
+                      <span className="text-white/70 text-xs bg-black/40 px-3 py-1 rounded-full">
+                        Camera preview — press Start Recording to begin
+                      </span>
                     </div>
                   )}
                 </div>
               )}
 
               {state === 'preview' && (
-                <Button size="lg" onClick={startRecording} className="bg-red-600 hover:bg-red-700 text-white w-48">
+                <Button size="lg" onClick={startRecording} className="bg-red-600 hover:bg-red-700 text-white w-56">
                   <Video className="w-5 h-5 mr-2" />
                   Start Recording
                 </Button>
               )}
 
               {state === 'recording' && (
-                <Button size="lg" onClick={stopRecording} variant="outline" className="w-48 border-red-200 text-red-600 hover:bg-red-50">
-                  <StopCircle className="w-5 h-5 mr-2" />
-                  Stop Recording
-                </Button>
+                <div className="flex flex-col items-center gap-3 w-full">
+                  {/* Visual progress bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="bg-red-500 h-2.5 rounded-full transition-all duration-1000 ease-linear"
+                      style={{ width: `${(timeLeft / 10) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-slate-500">{timeLeft}s remaining — recording will auto-stop</p>
+                  <Button size="lg" onClick={stopRecording} variant="outline" className="w-56 border-red-200 text-red-600 hover:bg-red-50">
+                    <StopCircle className="w-5 h-5 mr-2" />
+                    Stop Recording
+                  </Button>
+                </div>
               )}
 
               {state === 'processing' && (
@@ -186,7 +221,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
                   <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
                     <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-800">Processing Video</h3>
+                  <h3 className="text-lg font-semibold text-slate-800">Saving Recording</h3>
                   <p className="text-slate-500 text-sm">Transcribing and generating AI summary...</p>
                 </div>
               )}
@@ -196,7 +231,7 @@ export function NewMeetingModal({ demoMeetingId }: { demoMeetingId?: string }) {
                   <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
                     <CheckCircle className="w-8 h-8 text-emerald-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-800">Ready!</h3>
+                  <h3 className="text-lg font-semibold text-slate-800">Done!</h3>
                   <p className="text-slate-500 text-sm">Redirecting to your meeting workspace...</p>
                 </div>
               )}
