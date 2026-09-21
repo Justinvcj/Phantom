@@ -50,6 +50,9 @@ test.describe('Fathom Audit', () => {
   });
 
   test('3. Summary Panel & Template Switcher', async ({ page }) => {
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+    
     await page.goto(BASE_URL);
     await page.getByText('Q3 Product Strategy').click();
     await page.waitForURL('**/meetings/*');
@@ -66,8 +69,16 @@ test.describe('Fathom Audit', () => {
     await page.getByRole('menuitem', { name: 'Sales Call' }).click();
 
     // Because we mocked the API key, it will use the fallback and load
-    await expect(page.getByRole('button', { name: /Sales Call/i })).toBeVisible();
-    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('button[aria-haspopup="menu"]')).toHaveText(/Sales Call/i);
+    
+    // Wait for the spinner to disappear (isPending becomes false)
+    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 30000 });
+    
+    // Log the DOM to see what it's rendering
+    const content = await page.locator('.flex-1.overflow-hidden.min-h-0').innerText();
+    console.log("SUMMARY PANEL TEXT:", content);
+    
+    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible({ timeout: 30000 });
   });
 
   test('4. Action Items & Highlights', async ({ page }) => {

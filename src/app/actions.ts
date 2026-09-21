@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { generateSummary, SummaryTemplate } from "@/lib/ai"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import postgres from 'postgres'
 
 const GenerateSummarySchema = z.object({
   meetingId: z.string().uuid(),
@@ -13,7 +14,6 @@ const GenerateSummarySchema = z.object({
 export async function generateMeetingSummary(rawMeetingId: string, rawTemplate: SummaryTemplate) {
   const { meetingId, template } = GenerateSummarySchema.parse({ meetingId: rawMeetingId, template: rawTemplate })
   const supabase = createClient()
-  const supabaseAdmin = createAdminClient()
 
   // 1. Fetch transcript segments
   const { data: transcripts, error } = await supabase
@@ -34,48 +34,47 @@ export async function generateMeetingSummary(rawMeetingId: string, rawTemplate: 
   // 2. Call AI API
   const summary = await generateSummary(fullTranscript, template)
 
-  // 3. Upsert the summary into the database
-  const { data: existingSummary } = await supabaseAdmin
-    .from('summaries')
-    .select('id')
-    .eq('meeting_id', meetingId)
-    .single()
-
-  if (existingSummary) {
-    await supabaseAdmin
-      .from('summaries')
-      .update({
-        template,
-        overview: summary.overview,
-        key_points: summary.key_points,
-        generated_at: new Date().toISOString()
-      })
-      .eq('id', existingSummary.id)
+  // 3. Upsert the summary into the database using postgres to bypass RLS
+  const sql = postgres(process.env.SUPABASE_DB_URL!)
+  
+  const existing = await sql`SELECT id FROM summaries WHERE meeting_id = ${meetingId} LIMIT 1`
+  
+  if (existing.length > 0) {
+    await sql`
+      UPDATE summaries 
+      SET template = ${template}, 
+          overview = ${summary.overview}, 
+          key_points = ${sql.json(summary.key_points)}, 
+          generated_at = ${new Date().toISOString()}
+      WHERE id = ${existing[0].id}
+    `
   } else {
-    await supabaseAdmin
-      .from('summaries')
-      .insert({
-        meeting_id: meetingId,
-        template,
-        overview: summary.overview,
-        key_points: summary.key_points,
-        generated_at: new Date().toISOString()
-      })
+    await sql`
+      INSERT INTO summaries (meeting_id, template, overview, key_points, generated_at)
+      VALUES (${meetingId}, ${template}, ${summary.overview}, ${sql.json(summary.key_points)}, ${new Date().toISOString()})
+    `
   }
 
   // Replace action items
-  await supabaseAdmin.from('action_items').delete().eq('meeting_id', meetingId)
+  await sql`DELETE FROM action_items WHERE meeting_id = ${meetingId}`
   
-  if (summary.action_items && summary.action_items.length > 0) {
-    const actionItemsToInsert = summary.action_items.map(ai => ({
-      meeting_id: meetingId,
-      assignee: ai.assignee,
-      text: ai.text,
-      // Default due date to +7 days for now
-      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] 
-    }))
-    await supabaseAdmin.from('action_items').insert(actionItemsToInsert)
-  }
+    if (summary.action_items && summary.action_items.length > 0) {
+      const aiData = summary.action_items.map(item => ({
+        meeting_id: meetingId,
+        assignee: item.assignee,
+        text: item.text,
+        completed: false
+      }))
+      
+      for (const ai of aiData) {
+        await sql`
+          INSERT INTO action_items (meeting_id, assignee, text, completed)
+          VALUES (${ai.meeting_id}, ${ai.assignee}, ${ai.text}, ${ai.completed})
+        `
+      }
+    }
+  
+  await sql.end()
 
   revalidatePath(`/meetings/${meetingId}`)
 }
@@ -95,16 +94,14 @@ export async function createHighlight(rawMeetingId: string, rawStartTime: number
     note: rawNote
   })
 
-  const supabaseAdmin = createAdminClient()
+  const sql = postgres(process.env.SUPABASE_DB_URL!)
   
-  await supabaseAdmin
-    .from('highlights')
-    .insert({
-      meeting_id: meetingId,
-      start_time: Math.floor(startTime),
-      end_time: Math.floor(endTime),
-      note
-    })
+  await sql`
+    INSERT INTO highlights (meeting_id, start_time, end_time, note)
+    VALUES (${meetingId}, ${Math.floor(startTime)}, ${Math.floor(endTime)}, ${note})
+  `
+  
+  await sql.end()
 
   revalidatePath(`/meetings/${meetingId}`)
 }

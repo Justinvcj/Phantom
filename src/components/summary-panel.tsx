@@ -50,12 +50,10 @@ export function SummaryPanel({
           AI Summary
         </h2>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              {templateLabels[currentTemplate]}
-              <ChevronDown className="w-4 h-4 ml-2" />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="flex items-center" />}>
+            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {templateLabels[currentTemplate]}
+            <ChevronDown className="w-4 h-4 ml-2" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {(Object.keys(templateLabels) as SummaryTemplate[]).map(t => (

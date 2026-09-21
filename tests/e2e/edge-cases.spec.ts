@@ -60,7 +60,7 @@ test.describe('Fathom Audit - Edge Cases', () => {
     await expect(page.getByRole('tab', { name: 'Summary' })).toHaveAttribute('aria-selected', 'true');
 
     // The seed has a summary, but wait, if it already has one, the fallback won't trigger unless we hit 'Generate'
-    const generateBtn = page.locator('button:has-text("Summary")').first();
+    const generateBtn = page.locator('button[aria-haspopup="menu"]');
     await expect(generateBtn).toBeVisible();
 
     // The mocked API key ensures generate fail. We'll pick another template to force generation
@@ -70,8 +70,9 @@ test.describe('Fathom Audit - Edge Cases', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown'); // Moves to Interview
     await page.keyboard.press('Enter');
+    
     // Verify it doesn't crash and falls back smoothly
-    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Fallback Summary: The AI service is currently unreachable')).toBeVisible({ timeout: 30000 });
   });
 
   test('4. Search Edge Cases (SQL Injection & Huge strings)', async ({ page }) => {

@@ -5,7 +5,8 @@ test.describe('Chaos Engineering & Resilience Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Intercept Server Action POST requests to simulate catastrophic AI failure
     await page.route('**/*', async (route, request) => {
-      if (request.method() === 'POST' && request.headerValue('next-action')) {
+      const isNextAction = await request.headerValue('next-action');
+      if (request.method() === 'POST' && isNextAction) {
         await route.fulfill({
           status: 500,
           contentType: 'text/x-component',
