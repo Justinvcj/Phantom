@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function TranscriptPanel({ 
@@ -13,6 +13,7 @@ export function TranscriptPanel({
   onSeek?: (time: number) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [isHovering, setIsHovering] = useState(false)
   
   // Find active segment
   const activeSegmentIndex = transcripts.findIndex(
@@ -21,12 +22,12 @@ export function TranscriptPanel({
 
   // Auto-scroll to active segment
   useEffect(() => {
-    if (activeSegmentIndex === -1) return
+    if (activeSegmentIndex === -1 || isHovering) return
     const el = scrollRef.current?.querySelector(`[data-active="true"]`)
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [activeSegmentIndex])
+  }, [activeSegmentIndex, isHovering])
 
   // Group transcripts by speaker consecutively
   const groupedTranscripts = []
@@ -51,7 +52,11 @@ export function TranscriptPanel({
 
   return (
     <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-      <div className="space-y-6">
+      <div 
+        className="space-y-6 pb-20"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         {groupedTranscripts.map((group: any, i: number) => (
           <div key={i} className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0 mt-1">
