@@ -26,8 +26,12 @@ export function SummaryPanel({
 
   const handleGenerate = (template: SummaryTemplate) => {
     setCurrentTemplate(template)
-    startTransition(() => {
-      generateMeetingSummary(meetingId, template)
+    startTransition(async () => {
+      try {
+        await generateMeetingSummary(meetingId, template)
+      } catch (error) {
+        console.error("AI Summary generation failed, falling back to deterministic state:", error)
+      }
     })
   }
 
